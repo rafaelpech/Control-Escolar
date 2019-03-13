@@ -1,0 +1,176 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:servipro/paginas/principal.dart';
+import 'package:servipro/paginas/registro.dart';
+
+String username="";
+//Creación de la clase Login | StatlessWidget es para pantallas estáticas.
+class Login extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return new MaterialApp(
+      //Llamado de la clase LoginServi.
+      home: new LoginServi(),
+      //Creación de rutas.
+      routes: <String, WidgetBuilder>{
+        '/inicio': (BuildContext context) => new Home(),
+        '/login': (BuildContext context) => new LoginServi(),
+        '/registro': (BuildContext context) => new Registro(),
+      },
+    );
+  }
+}
+
+//Creación de la clase LoginServi | StatefulWidget es para pantallas dínamicas.
+class LoginServi extends StatefulWidget {
+  @override
+  LoginServiState createState() => LoginServiState();
+}
+
+String msg = '';
+String _password;
+
+class LoginServiState extends State<LoginServi> {
+
+  final GlobalKey<FormFieldState<String>> _passwordFieldKey = GlobalKey<FormFieldState<String>>();
+
+  //Creación de controladores de los TextFormField
+  TextEditingController correo = new TextEditingController();
+  TextEditingController pass = new TextEditingController();
+
+  //Función para llamar la base de datos mediante http.
+  Future<List> _login() async {
+    final response =
+        await http.post("http://10.0.3.2/servipro/getlogin.php", body: {
+      "username": correo.text,
+      "password": pass.text,
+    });
+
+    var userdate = json.decode(response.body);
+
+    if (userdate.length == 0) {
+      setState(() {
+        msg = "Login Fail";
+      });
+    } else {
+      if (userdate[0]['Correo'] == correo.text &&
+          userdate[0]['Clave'] == pass.text) {
+        Navigator.pushReplacementNamed(context, '/inicio');
+        print('Entraste');
+      }
+
+      setState(() {
+       username = userdate[0]['Nombre'];
+      });
+
+    }
+    return userdate;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: new AppBar(
+          title: new Text('Iniciar Sesión'),
+          centerTitle: true,
+        ),
+        body: Center(
+            child: Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Column(
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.all(10.0),
+                //Creación del formulario.
+                child: TextFormField(
+                  controller: correo,
+                  decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.teal)),
+                      hintText: 'Correo',
+                      labelText: 'Correo',
+                      suffixStyle: const TextStyle(color: Colors.green)),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(10.0),
+                child: PasswordField(
+                  fieldKey: _passwordFieldKey,
+                  helperText: 'No mas de 8 caracteres',
+                  labelText: 'Contraseña',
+                  onFieldSubmitted: (String value){
+                    setState(() {
+                     pass.text =value;
+                    });
+                  },
+                ),
+              ),
+              FlatButton(
+                onPressed: () {},
+                child: Text('¿Olvidaste tu contraseña?'),
+              ),
+            ],
+          ),
+        )),
+      ),
+    );
+  }
+}
+
+class PasswordField extends StatefulWidget {
+
+  const PasswordField({
+    this.fieldKey,
+    this.hintText,
+    this.labelText,
+    this.helperText,
+    this.onSaved,
+    this.validator,
+    this.onFieldSubmitted
+
+  });
+
+  final Key fieldKey;
+  final String hintText;
+  final String labelText;
+  final String helperText;
+  final FormFieldSetter<String> onSaved;
+  final FormFieldValidator<String> validator;
+  final ValueChanged<String> onFieldSubmitted;
+
+  @override
+  _PasswordFieldState createState() => new _PasswordFieldState();
+ }
+
+class _PasswordFieldState extends State<PasswordField> {
+  bool _obscureText = true;
+  @override
+  Widget build(BuildContext context) {
+   return new TextFormField(
+     key: widget.fieldKey,
+     obscureText: _obscureText,
+     maxLength: 8,
+     onSaved: widget.onSaved,
+     validator: widget.validator,
+     onFieldSubmitted: widget.onFieldSubmitted,
+     decoration: InputDecoration(
+       border: const UnderlineInputBorder(),
+       filled: true,
+       hintText: widget.hintText,
+       labelText: widget.labelText,
+       helperText: widget.helperText,
+       suffixIcon: GestureDetector(
+         onTap: (){
+           setState(() {
+            _obscureText = ! _obscureText;
+           });
+         },
+         child: Icon(_obscureText? Icons.visibility : Icons.visibility_off),
+       )
+     ),
+   );
+  }
+}
